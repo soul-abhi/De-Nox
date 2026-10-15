@@ -43,54 +43,56 @@ project idle 10d 4h  >= 32h threshold   ->  [CANDIDATE]   safe to remove
 project active 2h ago                   ->  [PROTECTED]   left alone
 ```
 
-That one change also makes it **fast**: the scan never walks into a dependency tree. A
-2.8 GB test corpus scans in **113 ms**.
+That one change also makes it **fast**: the scan never descends into an artifact folder,
+so a dependency tree costs one `stat`, not a full walk. A 2.8 GB test corpus scans in
+**113 ms**, and a real 8,859-directory home tree is no different in kind.
+
+The screenshot below is that real tree: **390 deletion candidates, 11.2 GB reclaimable** —
+and every actively-developed project in it left untouched.
 
 <br>
 
 ## What it looks like
 
-**Scan results** — every artifact folder, its verdict, and the reason for it:
+### Scan results
 
-```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ DE-NOX | Disk Cleanup Tool                                                               │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-┌ Artifact Folders ─────────────────────────────────┐┌ Scan Summary ───────────────────────┐
-│>> [CANDIDATE] target (1.2 GB) - idle 14d 6h       ││Root:                                │
-│   [CANDIDATE] node_modules (253.9 MB) - idle 10d  ││/home/you/code                       │
-│   [CANDIDATE] .venv (411.9 MB) - idle 13d 2h      ││                                     │
-│   [CANDIDATE] .next (7.6 MB) - idle 10d 0h        ││Threshold: 32 hours                  │
-│   [PROTECTED] node_modules - project active 1h ago││Directories visited: 87              │
-│   [PROTECTED] target - project active 2h ago      ││Artifact folders: 32                 │
-│   [PROTECTED] node_modules - project has no reada ││Deletion candidates: 22              │
-│                                                   ││Reclaimable: 2.5 GB                  │
-│                                                   ││Warnings: 0                          │
-│                                                   ││                                     │
-│                                                   ││Selected:                            │
-│                                                   ││/home/you/code/api/target            │
-│                                                   ││                                     │
-│                                                   ││Project idle: 14d 6h                 │
-│                                                   ││Verdict: candidate for deletion      │
-└───────────────────────────────────────────────────┘└─────────────────────────────────────┘
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ Up/Down | Shift+Enter (or D) Delete | a All Dirs | Esc Back | ^C Quit                    │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-```
+Every artifact folder with its verdict and the reason behind it. Here it is pointed at a
+real `~/tech` directory — 8,859 directories walked, 395 artifact folders found, **390
+candidates totalling 11.2 GB**:
 
-**Confirmation** — nothing is removed until you have seen the exact list:
+![Scan results: the artifact list with per-folder verdicts and a live summary pane](docs/screenshots/scan-results.png)
+
+The right pane tracks whatever is selected, so you can step through the list and see each
+folder's full path, its project's idle time, and the verdict before committing to anything.
+
+### Choosing a threshold
+
+One number decides everything: how many hours a project must have sat untouched before its
+build folders become eligible.
+
+![Threshold prompt explaining the idle rule before a read-only scan](docs/screenshots/threshold.png)
+
+### Browsing
+
+Pick the directory to clean, with a detail pane for whatever is highlighted.
+
+![File browser with a directory listing and a details pane](docs/screenshots/browser.png)
+
+### Confirmation
+
+Nothing is removed until the exact list is on screen:
 
 ```
 ┌ CONFIRM PERMANENT DELETION ──────────────────────────────────────────────┐
-│ 22 folder(s) will be permanently deleted, freeing 2.5 GB.                │
+│ 390 folder(s) will be permanently deleted, freeing 11.2 GB.              │
 │ This cannot be undone and does not use the trash.                        │
 │ These are regenerable build folders: reinstall or rebuild                │
 │ to get them back.                                                        │
 │                                                                          │
 │ ┌ Targets ─────────────────────────────────────────────────────────────┐ │
-│ │ /home/you/code/api/target                  (1.2 GB)                  │ │
-│ │ /home/you/code/web/node_modules            (253.9 MB)                │ │
-│ │ /home/you/code/ml/.venv                    (411.9 MB)                │ │
+│ │ /home/abhishek/tech/portfolio-website/.next     (33.3 MB)            │ │
+│ │ /home/abhishek/tech/portfolio-website/node_mod  (602.2 MB)           │ │
+│ │ /home/abhishek/tech/bixbee-backend/node_modules (255.4 MB)           │ │
 │ │ ...                                                                  │ │
 │ └──────────────────────────────────────────────────────────────────────┘ │
 │                                                                          │
@@ -98,8 +100,6 @@ That one change also makes it **fast**: the scan never walks into a dependency t
 │ Press Esc to cancel and keep everything.                                 │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
-
-<br>
 
 ## Quick start
 
