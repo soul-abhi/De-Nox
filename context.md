@@ -338,9 +338,10 @@ it asks for a second press first, because abandoning a running
 
 ## Repository status
 
-Git repo on branch `main` with **no commits yet**. Everything
-(`.gitignore`, `Cargo.toml`, `Cargo.lock`, `context.md`, `src/`,
-`scripts/`) is untracked. Git user: `soul-abhi`.
+Branch `main`. First commit is `6cb2786 "First Rust Project || FOFF"`,
+covering `.gitignore`, `Cargo.toml`, `Cargo.lock`, `context.md`,
+`src/main.rs` and both testbed scripts. `README.md` is untracked.
+Git user: `soul-abhi`.
 
 ## Constraints to respect
 
