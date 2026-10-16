@@ -307,7 +307,7 @@ aggressive mode needs its own guards and its own confirmation.
 
 ## License
 
-No license has been declared for this project yet.
+Released under the [MIT License](LICENSE).
 
 <div align="center">
 <br>
