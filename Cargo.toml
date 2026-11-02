@@ -3,6 +3,21 @@ name = "de-nox"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+description = "A terminal disk-cleanup tool that knows the difference between a dead project and a busy one."
+repository = "https://github.com/soul-abhi/De-Nox"
+readme = "README.md"
+keywords = ["cleanup", "disk", "tui", "node_modules", "target", "build-artifacts"]
+categories = ["command-line-utilities", "filesystem"]
+
+[workspace.metadata.dist]
+targets = [
+  "x86_64-unknown-linux-musl",
+  "aarch64-unknown-linux-musl",
+  "x86_64-unknown-linux-gnu",
+]
+installers = ["shell"]
+ci = "github"
+include = ["LICENSE", "README.md"]
 
 [dependencies]
 chrono = "0.4.45"

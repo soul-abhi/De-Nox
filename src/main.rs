@@ -1,4 +1,5 @@
 use chrono::Local;
+use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
@@ -788,11 +789,18 @@ fn is_quit_key(key: &KeyEvent) -> bool {
         && matches!(key.code, KeyCode::Char('c') | KeyCode::Char('C'))
 }
 
+#[derive(Parser)]
+#[command(name = "de-nox", version, about = "A terminal disk-cleanup tool that knows the difference between a dead project and a busy one.", long_about = None)]
+struct Args {
+    /// Directory to start in (default: current directory)
+    #[arg(index = 1)]
+    path: Option<PathBuf>,
+}
+
 fn main() -> io::Result<()> {
-    let start_dir = env::args()
-        .nth(1)
-        .map(PathBuf::from)
-        .unwrap_or(env::current_dir()?);
+    let args = Args::parse();
+
+    let start_dir = args.path.unwrap_or(env::current_dir()?);
 
     let start_dir = fs::canonicalize(start_dir)?;
 

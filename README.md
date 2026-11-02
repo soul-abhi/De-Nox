@@ -101,10 +101,43 @@ Nothing is removed until the exact list is on screen:
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Quick start
+## Download
+
+Prebuilt binaries for Linux (musl, glibc) and macOS are available on the [Releases page](https://github.com/soul-abhi/De-Nox/releases).
+
+**Linux (x86_64, musl — recommended, runs everywhere):**
+```bash
+curl -L https://github.com/soul-abhi/De-Nox/releases/latest/download/de-nox-x86_64-unknown-linux-musl.tar.gz | tar xz
+./de-nox ~/code
+```
+
+**Linux (x86_64, glibc):**
+```bash
+curl -L https://github.com/soul-abhi/De-Nox/releases/latest/download/de-nox-x86_64-unknown-linux-gnu.tar.gz | tar xz
+./de-nox ~/code
+```
+
+**Linux (aarch64, musl):**
+```bash
+curl -L https://github.com/soul-abhi/De-Nox/releases/latest/download/de-nox-aarch64-unknown-linux-musl.tar.gz | tar xz
+./de-nox ~/code
+```
+
+Each archive contains the `de-nox` binary, `LICENSE`, and `README.md`. A `SHA256SUMS` file is published alongside for verification.
+
+**Rust users:**
+```bash
+cargo install de-nox
+# or, for instant install from prebuilt binaries:
+cargo binstall de-nox
+```
+
+---
+
+## Quick start (from source)
 
 ```bash
-git clone <your-remote> de-nox
+git clone https://github.com/soul-abhi/De-Nox.git
 cd de-nox
 cargo build --release
 
