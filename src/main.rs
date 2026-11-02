@@ -873,45 +873,45 @@ fn run_app(terminal: &mut AppTerminal, start_dir: PathBuf) -> io::Result<()> {
 
     loop {
         // Receive worker updates without blocking the interface.
-        if screen == Screen::Scanning {
-            if let Some(rx) = &scan_rx {
-                while let Ok(message) = rx.try_recv() {
-                    match message {
-                        ScanMessage::Progress(update) => scan_progress = update,
-                        ScanMessage::Finished(result) => {
-                            scan_state.select(if result.artifacts.is_empty() {
-                                None
-                            } else {
-                                Some(0)
-                            });
-                            directory_state.select(Some(0));
-                            scan = Some(result);
-                            scan_rx = None;
-                            screen = Screen::ScanResults;
-                            break;
-                        }
+        if screen == Screen::Scanning
+            && let Some(rx) = &scan_rx
+        {
+            while let Ok(message) = rx.try_recv() {
+                match message {
+                    ScanMessage::Progress(update) => scan_progress = update,
+                    ScanMessage::Finished(result) => {
+                        scan_state.select(if result.artifacts.is_empty() {
+                            None
+                        } else {
+                            Some(0)
+                        });
+                        directory_state.select(Some(0));
+                        scan = Some(result);
+                        scan_rx = None;
+                        screen = Screen::ScanResults;
+                        break;
                     }
                 }
             }
         }
 
-        if screen == Screen::Deleting {
-            if let Some(rx) = &delete_rx {
-                while let Ok(message) = rx.try_recv() {
-                    match message {
-                        DeleteMessage::Progress(update) => delete_progress = update,
-                        DeleteMessage::Finished(outcome) => {
-                            delete_outcome = Some(outcome);
-                            delete_rx = None;
-                            force_quit_armed = false;
-                            error_message = None;
-                            // The scan is stale once anything is gone.
-                            scan = None;
-                            entries = read_entries(&current_dir).unwrap_or_default();
-                            file_state.select(if entries.is_empty() { None } else { Some(0) });
-                            screen = Screen::DeleteReport;
-                            break;
-                        }
+        if screen == Screen::Deleting
+            && let Some(rx) = &delete_rx
+        {
+            while let Ok(message) = rx.try_recv() {
+                match message {
+                    DeleteMessage::Progress(update) => delete_progress = update,
+                    DeleteMessage::Finished(outcome) => {
+                        delete_outcome = Some(outcome);
+                        delete_rx = None;
+                        force_quit_armed = false;
+                        error_message = None;
+                        // The scan is stale once anything is gone.
+                        scan = None;
+                        entries = read_entries(&current_dir).unwrap_or_default();
+                        file_state.select(if entries.is_empty() { None } else { Some(0) });
+                        screen = Screen::DeleteReport;
+                        break;
                     }
                 }
             }
@@ -1470,348 +1470,342 @@ fn run_app(terminal: &mut AppTerminal, start_dir: PathBuf) -> io::Result<()> {
         })?;
 
         // Poll instead of blocking indefinitely, allowing animation and progress updates.
-        if event::poll(Duration::from_millis(60))? {
-            if let Event::Key(key) = event::read()? {
-                if is_quit_key(&key) {
-                    // Quitting mid-delete abandons a running remove_dir_all
-                    // and can leave a half-removed folder, so that one case
-                    // asks for confirmation instead of exiting instantly.
-                    if screen == Screen::Deleting && !force_quit_armed {
-                        force_quit_armed = true;
-                        error_message = Some(
-                            "Deletion in progress. Press Ctrl+C again to force quit \
-                             (may leave a partly removed folder)."
-                                .to_string(),
-                        );
-                    } else {
-                        break;
-                    }
-
-                    continue;
+        if event::poll(Duration::from_millis(60))?
+            && let Event::Key(key) = event::read()?
+        {
+            if is_quit_key(&key) {
+                // Quitting mid-delete abandons a running remove_dir_all
+                // and can leave a half-removed folder, so that one case
+                // asks for confirmation instead of exiting instantly.
+                if screen == Screen::Deleting && !force_quit_armed {
+                    force_quit_armed = true;
+                    error_message = Some(
+                        "Deletion in progress. Press Ctrl+C again to force quit \
+                         (may leave a partly removed folder)."
+                            .to_string(),
+                    );
+                } else {
+                    break;
                 }
 
-                match screen {
-                    Screen::Menu => match key.code {
-                        KeyCode::Char('q') => break,
-                        KeyCode::Up => {
-                            let i = menu_state.selected().unwrap_or(0);
-                            menu_state.select(Some(i.saturating_sub(1)));
-                        }
-                        KeyCode::Down => {
-                            let i = menu_state.selected().unwrap_or(0);
-                            menu_state.select(Some((i + 1).min(menu_labels.len() - 1)));
-                        }
-                        KeyCode::Enter => match menu_state.selected() {
-                            Some(0) => {
-                                error_message = None;
-                                screen = Screen::Browser;
-                            }
-                            Some(1) => {
-                                error_message =
-                                    Some("Deep Clean is not implemented yet.".to_string())
-                            }
-                            Some(2) => {
-                                let (sessions, warning) = load_history();
-                                history = sessions;
-                                history_warning = warning;
-                                history_state.select(if history.is_empty() {
-                                    None
-                                } else {
-                                    Some(0)
-                                });
-                                error_message = None;
-                                screen = Screen::History;
-                            }
-                            Some(3) => break,
-                            _ => {}
-                        },
-                        _ => {}
-                    },
+                continue;
+            }
 
-                    Screen::Browser => match key.code {
-                        KeyCode::Char('q') => break,
-                        KeyCode::Esc => {
-                            error_message = None;
-                            screen = Screen::Menu;
-                        }
-                        KeyCode::Char('H') | KeyCode::Char('h')
-                            if key.modifiers.contains(KeyModifiers::SHIFT) =>
-                        {
-                            threshold_input.clear();
-                            threshold_input.push_str(&threshold_hours.to_string());
-                            error_message = None;
-                            screen = Screen::ThresholdInput;
-                        }
-                        KeyCode::Up => {
-                            if !entries.is_empty() {
-                                let i = file_state.selected().unwrap_or(0);
-                                file_state.select(Some(i.saturating_sub(1)));
-                            }
-                        }
-                        KeyCode::Down => {
-                            if !entries.is_empty() {
-                                let i = file_state.selected().unwrap_or(0);
-                                file_state.select(Some((i + 1).min(entries.len() - 1)));
-                            }
-                        }
-                        KeyCode::Enter => {
-                            if let Some(entry) = file_state.selected().and_then(|i| entries.get(i))
-                            {
-                                if entry.is_dir {
-                                    let next = entry.path.clone();
-                                    match read_entries(&next) {
-                                        Ok(new_entries) => {
-                                            current_dir = next;
-                                            entries = new_entries;
-                                            file_state.select(if entries.is_empty() {
-                                                None
-                                            } else {
-                                                Some(0)
-                                            });
-                                            error_message = None;
-                                        }
-                                        Err(e) => error_message = Some(e.to_string()),
-                                    }
-                                }
-                            }
-                        }
-                        KeyCode::Backspace => {
-                            if let Some(parent) = current_dir.parent() {
-                                let parent = parent.to_path_buf();
-                                match read_entries(&parent) {
-                                    Ok(new_entries) => {
-                                        current_dir = parent;
-                                        entries = new_entries;
-                                        file_state.select(if entries.is_empty() {
-                                            None
-                                        } else {
-                                            Some(0)
-                                        });
-                                        error_message = None;
-                                    }
-                                    Err(e) => error_message = Some(e.to_string()),
-                                }
-                            }
-                        }
-                        _ => {}
-                    },
-
-                    Screen::ThresholdInput => match key.code {
-                        KeyCode::Esc => {
+            match screen {
+                Screen::Menu => match key.code {
+                    KeyCode::Char('q') => break,
+                    KeyCode::Up => {
+                        let i = menu_state.selected().unwrap_or(0);
+                        menu_state.select(Some(i.saturating_sub(1)));
+                    }
+                    KeyCode::Down => {
+                        let i = menu_state.selected().unwrap_or(0);
+                        menu_state.select(Some((i + 1).min(menu_labels.len() - 1)));
+                    }
+                    KeyCode::Enter => match menu_state.selected() {
+                        Some(0) => {
                             error_message = None;
                             screen = Screen::Browser;
                         }
-                        KeyCode::Char(c) if c.is_ascii_digit() => threshold_input.push(c),
-                        KeyCode::Backspace => {
-                            threshold_input.pop();
+                        Some(1) => {
+                            error_message = Some("Deep Clean is not implemented yet.".to_string())
                         }
-                        KeyCode::Enter => match threshold_input.parse::<u64>() {
-                            Ok(hours) if hours > 0 => {
-                                threshold_hours = hours;
-                                error_message = None;
-                                scan_progress = ScanProgress {
-                                    current_path: current_dir.clone(),
-                                    directories: 0,
-                                    artifacts: 0,
-                                    candidates: 0,
-                                };
-                                let root = current_dir.clone();
-                                let (tx, rx) = mpsc::channel();
-                                scan_rx = Some(rx);
-                                scan = None;
-                                screen = Screen::Scanning;
-
-                                thread::spawn(move || {
-                                    let result = scan_directory(&root, hours, &tx);
-                                    let _ = tx.send(ScanMessage::Finished(result));
-                                });
-                            }
-                            _ => {
-                                error_message =
-                                    Some("Enter a whole number greater than zero.".to_string())
-                            }
-                        },
+                        Some(2) => {
+                            let (sessions, warning) = load_history();
+                            history = sessions;
+                            history_warning = warning;
+                            history_state.select(if history.is_empty() { None } else { Some(0) });
+                            error_message = None;
+                            screen = Screen::History;
+                        }
+                        Some(3) => break,
                         _ => {}
                     },
+                    _ => {}
+                },
 
-                    Screen::Scanning => {
-                        // Abandon the worker's results; it is read-only, so
-                        // letting the thread finish on its own is harmless.
-                        if key.code == KeyCode::Esc {
-                            scan_rx = None;
-                            screen = Screen::Browser;
+                Screen::Browser => match key.code {
+                    KeyCode::Char('q') => break,
+                    KeyCode::Esc => {
+                        error_message = None;
+                        screen = Screen::Menu;
+                    }
+                    KeyCode::Char('H') | KeyCode::Char('h')
+                        if key.modifiers.contains(KeyModifiers::SHIFT) =>
+                    {
+                        threshold_input.clear();
+                        threshold_input.push_str(&threshold_hours.to_string());
+                        error_message = None;
+                        screen = Screen::ThresholdInput;
+                    }
+                    KeyCode::Up => {
+                        if !entries.is_empty() {
+                            let i = file_state.selected().unwrap_or(0);
+                            file_state.select(Some(i.saturating_sub(1)));
                         }
                     }
-
-                    Screen::ScanResults => match key.code {
-                        KeyCode::Esc => {
-                            error_message = None;
-                            screen = Screen::Browser;
+                    KeyCode::Down => {
+                        if !entries.is_empty() {
+                            let i = file_state.selected().unwrap_or(0);
+                            file_state.select(Some((i + 1).min(entries.len() - 1)));
                         }
-                        KeyCode::Up => {
-                            let count = scan.as_ref().map(|s| s.artifacts.len()).unwrap_or(0);
-                            if count > 0 {
-                                let i = scan_state.selected().unwrap_or(0);
-                                scan_state.select(Some(i.saturating_sub(1)));
-                            }
-                        }
-                        KeyCode::Down => {
-                            let count = scan.as_ref().map(|s| s.artifacts.len()).unwrap_or(0);
-                            if count > 0 {
-                                let i = scan_state.selected().unwrap_or(0);
-                                scan_state.select(Some((i + 1).min(count - 1)));
-                            }
-                        }
-                        KeyCode::Char('a') => {
-                            if scan.is_some() {
-                                directory_state.select(Some(0));
-                                screen = Screen::AllDirectories;
-                            }
-                        }
-                        // Shift+Enter is the documented key, but many terminals
-                        // cannot report it, so D is an equivalent fallback.
-                        KeyCode::Enter | KeyCode::Char('D')
-                            if key.modifiers.contains(KeyModifiers::SHIFT) =>
+                    }
+                    KeyCode::Enter => {
+                        if let Some(entry) = file_state.selected().and_then(|i| entries.get(i))
+                            && entry.is_dir
                         {
-                            match &scan {
-                                Some(s) if s.candidates().next().is_some() => {
-                                    delete_queue =
-                                        s.candidates().map(|a| (a.path.clone(), a.size)).collect();
+                            let next = entry.path.clone();
+                            match read_entries(&next) {
+                                Ok(new_entries) => {
+                                    current_dir = next;
+                                    entries = new_entries;
+                                    file_state.select(if entries.is_empty() {
+                                        None
+                                    } else {
+                                        Some(0)
+                                    });
                                     error_message = None;
-                                    screen = Screen::ConfirmDelete;
                                 }
-                                Some(_) => {
-                                    error_message =
-                                        Some("No deletion candidates in this scan.".to_string())
-                                }
-                                None => {}
+                                Err(e) => error_message = Some(e.to_string()),
                             }
                         }
-                        _ => {}
-                    },
-
-                    Screen::AllDirectories => match key.code {
-                        KeyCode::Esc => screen = Screen::ScanResults,
-                        KeyCode::Up => {
-                            let count = scan.as_ref().map(|s| s.directories.len()).unwrap_or(0);
-                            if count > 0 {
-                                let i = directory_state.selected().unwrap_or(0);
-                                directory_state.select(Some(i.saturating_sub(1)));
-                            }
-                        }
-                        KeyCode::Down => {
-                            let count = scan.as_ref().map(|s| s.directories.len()).unwrap_or(0);
-                            if count > 0 {
-                                let i = directory_state.selected().unwrap_or(0);
-                                directory_state.select(Some((i + 1).min(count - 1)));
-                            }
-                        }
-                        _ => {}
-                    },
-
-                    Screen::ConfirmDelete => match key.code {
-                        KeyCode::Esc => {
-                            delete_queue.clear();
-                            error_message = Some("Cancelled. Nothing was deleted.".to_string());
-                            screen = Screen::ScanResults;
-                        }
-                        KeyCode::Enter => {
-                            if delete_queue.is_empty() {
-                                screen = Screen::ScanResults;
-                            } else {
-                                let root = scan
-                                    .as_ref()
-                                    .map(|s| s.root.clone())
-                                    .unwrap_or_else(|| current_dir.clone());
-                                let hours = threshold_hours;
-                                let queue = std::mem::take(&mut delete_queue);
-
-                                delete_progress = DeleteProgress {
-                                    current_path: PathBuf::new(),
-                                    done: 0,
-                                    total: queue.len(),
-                                };
-
-                                let (tx, rx) = mpsc::channel();
-                                delete_rx = Some(rx);
-                                delete_outcome = None;
-                                error_message = None;
-                                screen = Screen::Deleting;
-
-                                thread::spawn(move || {
-                                    let outcome = delete_artifacts(queue, root, hours, None, &tx);
-                                    let _ = tx.send(DeleteMessage::Finished(outcome));
-                                });
-                            }
-                        }
-                        _ => {}
-                    },
-
-                    Screen::Deleting => {
-                        // Deliberately ignores input: interrupting a
-                        // remove_dir_all would leave a half-deleted tree.
                     }
+                    KeyCode::Backspace => {
+                        if let Some(parent) = current_dir.parent() {
+                            let parent = parent.to_path_buf();
+                            match read_entries(&parent) {
+                                Ok(new_entries) => {
+                                    current_dir = parent;
+                                    entries = new_entries;
+                                    file_state.select(if entries.is_empty() {
+                                        None
+                                    } else {
+                                        Some(0)
+                                    });
+                                    error_message = None;
+                                }
+                                Err(e) => error_message = Some(e.to_string()),
+                            }
+                        }
+                    }
+                    _ => {}
+                },
 
-                    Screen::DeleteReport => match key.code {
-                        KeyCode::Char('q') => break,
-                        KeyCode::Esc | KeyCode::Enter => {
+                Screen::ThresholdInput => match key.code {
+                    KeyCode::Esc => {
+                        error_message = None;
+                        screen = Screen::Browser;
+                    }
+                    KeyCode::Char(c) if c.is_ascii_digit() => threshold_input.push(c),
+                    KeyCode::Backspace => {
+                        threshold_input.pop();
+                    }
+                    KeyCode::Enter => match threshold_input.parse::<u64>() {
+                        Ok(hours) if hours > 0 => {
+                            threshold_hours = hours;
                             error_message = None;
-                            screen = Screen::Browser;
-                        }
-                        _ => {}
-                    },
+                            scan_progress = ScanProgress {
+                                current_path: current_dir.clone(),
+                                directories: 0,
+                                artifacts: 0,
+                                candidates: 0,
+                            };
+                            let root = current_dir.clone();
+                            let (tx, rx) = mpsc::channel();
+                            scan_rx = Some(rx);
+                            scan = None;
+                            screen = Screen::Scanning;
 
-                    Screen::History => match key.code {
-                        KeyCode::Char('q') => break,
-                        KeyCode::Esc => {
-                            error_message = None;
-                            screen = Screen::Menu;
+                            thread::spawn(move || {
+                                let result = scan_directory(&root, hours, &tx);
+                                let _ = tx.send(ScanMessage::Finished(result));
+                            });
                         }
-                        KeyCode::Up => {
-                            if !history.is_empty() {
-                                let i = history_state.selected().unwrap_or(0);
-                                history_state.select(Some(i.saturating_sub(1)));
-                            }
+                        _ => {
+                            error_message =
+                                Some("Enter a whole number greater than zero.".to_string())
                         }
-                        KeyCode::Down => {
-                            if !history.is_empty() {
-                                let i = history_state.selected().unwrap_or(0);
-                                history_state.select(Some((i + 1).min(history.len() - 1)));
-                            }
-                        }
-                        KeyCode::Enter
-                            if history_state
-                                .selected()
-                                .and_then(|i| history.get(i))
-                                .is_some() =>
-                        {
-                            history_detail_state.select(Some(0));
-                            screen = Screen::HistoryDetail;
-                        }
-                        _ => {}
                     },
+                    _ => {}
+                },
 
-                    Screen::HistoryDetail => match key.code {
-                        KeyCode::Esc => screen = Screen::History,
-                        KeyCode::Up => {
-                            let i = history_detail_state.selected().unwrap_or(0);
-                            history_detail_state.select(Some(i.saturating_sub(1)));
-                        }
-                        KeyCode::Down => {
-                            let count = history_state
-                                .selected()
-                                .and_then(|i| history.get(i))
-                                .map(|s| s.entries.len())
-                                .unwrap_or(0);
-
-                            if count > 0 {
-                                let i = history_detail_state.selected().unwrap_or(0);
-                                history_detail_state.select(Some((i + 1).min(count - 1)));
-                            }
-                        }
-                        _ => {}
-                    },
+                Screen::Scanning => {
+                    // Abandon the worker's results; it is read-only, so
+                    // letting the thread finish on its own is harmless.
+                    if key.code == KeyCode::Esc {
+                        scan_rx = None;
+                        screen = Screen::Browser;
+                    }
                 }
+
+                Screen::ScanResults => match key.code {
+                    KeyCode::Esc => {
+                        error_message = None;
+                        screen = Screen::Browser;
+                    }
+                    KeyCode::Up => {
+                        let count = scan.as_ref().map(|s| s.artifacts.len()).unwrap_or(0);
+                        if count > 0 {
+                            let i = scan_state.selected().unwrap_or(0);
+                            scan_state.select(Some(i.saturating_sub(1)));
+                        }
+                    }
+                    KeyCode::Down => {
+                        let count = scan.as_ref().map(|s| s.artifacts.len()).unwrap_or(0);
+                        if count > 0 {
+                            let i = scan_state.selected().unwrap_or(0);
+                            scan_state.select(Some((i + 1).min(count - 1)));
+                        }
+                    }
+                    KeyCode::Char('a') => {
+                        if scan.is_some() {
+                            directory_state.select(Some(0));
+                            screen = Screen::AllDirectories;
+                        }
+                    }
+                    // Shift+Enter is the documented key, but many terminals
+                    // cannot report it, so D is an equivalent fallback.
+                    KeyCode::Enter | KeyCode::Char('D')
+                        if key.modifiers.contains(KeyModifiers::SHIFT) =>
+                    {
+                        match &scan {
+                            Some(s) if s.candidates().next().is_some() => {
+                                delete_queue =
+                                    s.candidates().map(|a| (a.path.clone(), a.size)).collect();
+                                error_message = None;
+                                screen = Screen::ConfirmDelete;
+                            }
+                            Some(_) => {
+                                error_message =
+                                    Some("No deletion candidates in this scan.".to_string())
+                            }
+                            None => {}
+                        }
+                    }
+                    _ => {}
+                },
+
+                Screen::AllDirectories => match key.code {
+                    KeyCode::Esc => screen = Screen::ScanResults,
+                    KeyCode::Up => {
+                        let count = scan.as_ref().map(|s| s.directories.len()).unwrap_or(0);
+                        if count > 0 {
+                            let i = directory_state.selected().unwrap_or(0);
+                            directory_state.select(Some(i.saturating_sub(1)));
+                        }
+                    }
+                    KeyCode::Down => {
+                        let count = scan.as_ref().map(|s| s.directories.len()).unwrap_or(0);
+                        if count > 0 {
+                            let i = directory_state.selected().unwrap_or(0);
+                            directory_state.select(Some((i + 1).min(count - 1)));
+                        }
+                    }
+                    _ => {}
+                },
+
+                Screen::ConfirmDelete => match key.code {
+                    KeyCode::Esc => {
+                        delete_queue.clear();
+                        error_message = Some("Cancelled. Nothing was deleted.".to_string());
+                        screen = Screen::ScanResults;
+                    }
+                    KeyCode::Enter => {
+                        if delete_queue.is_empty() {
+                            screen = Screen::ScanResults;
+                        } else {
+                            let root = scan
+                                .as_ref()
+                                .map(|s| s.root.clone())
+                                .unwrap_or_else(|| current_dir.clone());
+                            let hours = threshold_hours;
+                            let queue = std::mem::take(&mut delete_queue);
+
+                            delete_progress = DeleteProgress {
+                                current_path: PathBuf::new(),
+                                done: 0,
+                                total: queue.len(),
+                            };
+
+                            let (tx, rx) = mpsc::channel();
+                            delete_rx = Some(rx);
+                            delete_outcome = None;
+                            error_message = None;
+                            screen = Screen::Deleting;
+
+                            thread::spawn(move || {
+                                let outcome = delete_artifacts(queue, root, hours, None, &tx);
+                                let _ = tx.send(DeleteMessage::Finished(outcome));
+                            });
+                        }
+                    }
+                    _ => {}
+                },
+
+                Screen::Deleting => {
+                    // Deliberately ignores input: interrupting a
+                    // remove_dir_all would leave a half-deleted tree.
+                }
+
+                Screen::DeleteReport => match key.code {
+                    KeyCode::Char('q') => break,
+                    KeyCode::Esc | KeyCode::Enter => {
+                        error_message = None;
+                        screen = Screen::Browser;
+                    }
+                    _ => {}
+                },
+
+                Screen::History => match key.code {
+                    KeyCode::Char('q') => break,
+                    KeyCode::Esc => {
+                        error_message = None;
+                        screen = Screen::Menu;
+                    }
+                    KeyCode::Up => {
+                        if !history.is_empty() {
+                            let i = history_state.selected().unwrap_or(0);
+                            history_state.select(Some(i.saturating_sub(1)));
+                        }
+                    }
+                    KeyCode::Down => {
+                        if !history.is_empty() {
+                            let i = history_state.selected().unwrap_or(0);
+                            history_state.select(Some((i + 1).min(history.len() - 1)));
+                        }
+                    }
+                    KeyCode::Enter
+                        if history_state
+                            .selected()
+                            .and_then(|i| history.get(i))
+                            .is_some() =>
+                    {
+                        history_detail_state.select(Some(0));
+                        screen = Screen::HistoryDetail;
+                    }
+                    _ => {}
+                },
+
+                Screen::HistoryDetail => match key.code {
+                    KeyCode::Esc => screen = Screen::History,
+                    KeyCode::Up => {
+                        let i = history_detail_state.selected().unwrap_or(0);
+                        history_detail_state.select(Some(i.saturating_sub(1)));
+                    }
+                    KeyCode::Down => {
+                        let count = history_state
+                            .selected()
+                            .and_then(|i| history.get(i))
+                            .map(|s| s.entries.len())
+                            .unwrap_or(0);
+
+                        if count > 0 {
+                            let i = history_detail_state.selected().unwrap_or(0);
+                            history_detail_state.select(Some((i + 1).min(count - 1)));
+                        }
+                    }
+                    _ => {}
+                },
             }
         }
     }
