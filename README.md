@@ -145,7 +145,7 @@ To install the resulting binary into your Cargo binary directory:
 cargo install --path .
 ```
 
-`de-nox` is not published on crates.io yet. Once it is, `cargo install de-nox` and `cargo binstall de-nox` will install the versions documented here. Until then, use `cargo install --path .` from the checkout you already have.
+`de-nox` is published on crates.io. `cargo install de-nox --locked` installs the current release from source, and `cargo binstall de-nox` fetches the matching prebuilt archive from the GitHub release. The source-build instructions above remain the way to install an unreleased checkout.
 
 ---
 
@@ -356,7 +356,7 @@ The CI workflow in `.github/workflows/ci.yml` runs formatting checks, Clippy wit
 
 ### Publishing to crates.io
 
-The GitHub release and the crates.io publication are independent. The release assets come from `cargo-dist`; the crate itself is published with `cargo publish`.
+Version `0.1.1` is published on crates.io. The GitHub release and the crates.io publication are independent: the release assets come from `cargo-dist`, while the crate itself is published with `cargo publish`.
 
 Publishing requires a verified crates.io account, an API token with `publish-new` and `publish-update` scopes, and a version that does not already exist on crates.io. The token is stored as the `CARGO_REGISTRY_TOKEN` repository secret.
 
