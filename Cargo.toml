@@ -8,6 +8,16 @@ repository = "https://github.com/soul-abhi/De-Nox"
 readme = "README.md"
 keywords = ["cleanup", "disk", "tui", "node_modules", "build-artifacts"]
 categories = ["command-line-utilities", "filesystem"]
+# Keep the published crate limited to what `cargo install` actually needs.
+# The repository keeps the documentation, scripts, and CI configuration.
+exclude = [
+  ".github/",
+  "context.md",
+  "dist-workspace.toml",
+  "docs/",
+  "rust-toolchain.toml",
+  "scripts/",
+]
 
 [dependencies]
 chrono = "0.4.45"

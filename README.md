@@ -65,19 +65,19 @@ The same design also makes the scan faster. `de-nox` never descends into an arti
 
 Choose the directory to clean. The right-hand pane describes the selected item; the left-hand pane is the filesystem.
 
-![File browser with a directory listing and a details pane](docs/screenshots/browser.png)
+![File browser with a directory listing and a details pane](https://raw.githubusercontent.com/soul-abhi/De-Nox/main/docs/screenshots/browser.png)
 
 ### Choosing a threshold
 
 One number decides everything: how many hours a project must have been untouched before its build folders become eligible. The default is 72 hours. A threshold of 32 hours is reasonable if you want to reclaim space aggressively; 72 hours is a calmer starting point.
 
-![Threshold prompt explaining the idle rule before a read-only scan](docs/screenshots/threshold.png)
+![Threshold prompt explaining the idle rule before a read-only scan](https://raw.githubusercontent.com/soul-abhi/De-Nox/main/docs/screenshots/threshold.png)
 
 ### Reviewing the scan
 
 Every artifact folder is listed with its size, its project's idle time, and a verdict. The summary pane reports the number of directories visited, the number of artifacts found, the number of candidates, and the total reclaimable space. The scan itself is read-only.
 
-![Scan results with per-folder verdicts and a scan summary](docs/screenshots/scan-results.png)
+![Scan results with per-folder verdicts and a scan summary](https://raw.githubusercontent.com/soul-abhi/De-Nox/main/docs/screenshots/scan-results.png)
 
 The screenshot above is a real scan of a `~/tech` directory tree: 8,859 directories visited, 395 artifact folders found, 390 candidates, and 11.2 GB reclaimable. The projects that were actively being worked on were left untouched. That is the intended outcome, even if it makes for a less dramatic screenshot.
 
@@ -145,7 +145,7 @@ To install the resulting binary into your Cargo binary directory:
 cargo install --path .
 ```
 
-`de-nox` is not currently published on crates.io, so `cargo install de-nox` will not work. The command above installs from the checkout you already have.
+`de-nox` is not published on crates.io yet. Once it is, `cargo install de-nox` and `cargo binstall de-nox` will install the versions documented here. Until then, use `cargo install --path .` from the checkout you already have.
 
 ---
 
@@ -287,6 +287,7 @@ dist-workspace.toml              cargo-dist configuration
 .github/workflows/ci.yml         formatting, Clippy, and tests
 .github/workflows/release.yml    generated cargo-dist release workflow
 .github/workflows/verify-release.yml  post-publish asset verification
+.github/workflows/publish-crates.yml  manual crates.io publication
 ```
 
 ## Testbed
@@ -352,6 +353,23 @@ The script exits non-zero on the first missing file, bad checksum, or version mi
 Manual uploading is not part of the process. The pipeline produces the archives, the shell installer, the checksums, and the standalone updater; reproducing that work by hand is a good way to produce a release that disagrees with its own metadata.
 
 The CI workflow in `.github/workflows/ci.yml` runs formatting checks, Clippy with warnings treated as errors, and the test suite on pushes and pull requests. It does not publish anything. Publishing belongs solely to the cargo-dist workflow, so two jobs cannot race to assemble the same release.
+
+### Publishing to crates.io
+
+The GitHub release and the crates.io publication are independent. The release assets come from `cargo-dist`; the crate itself is published with `cargo publish`.
+
+Publishing requires a verified crates.io account, an API token with `publish-new` and `publish-update` scopes, and a version that does not already exist on crates.io. The token is stored as the `CARGO_REGISTRY_TOKEN` repository secret.
+
+The `Publish crate` workflow in `.github/workflows/publish-crates.yml` is deliberately manual. Supply the version to publish; the workflow refuses to continue if it disagrees with `Cargo.toml`. The same operation can be performed locally:
+
+```bash
+cargo publish --dry-run --locked
+cargo publish --locked
+```
+
+A published version cannot be replaced. If a mistake is found after publication, bump the version and release again; the previous version can be yanked, not overwritten.
+
+After the crates.io index updates, `cargo install de-nox --locked` works. `cargo binstall de-nox` also finds the release archives, because cargo-dist's versionless file name (`de-nox-<target>.tar.xz`) matches cargo-binstall's default discovery pattern.
 
 ---
 

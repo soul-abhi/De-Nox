@@ -1,0 +1,52 @@
+name: Publish crate
+
+# A crates.io version is permanent and can never be reused, so this workflow
+# is deliberately manual. It packages the crate, checks that the requested
+# version matches Cargo.toml, and publishes with the repository secret
+# CARGO_REGISTRY_TOKEN. Create that secret under
+# Settings > Secrets and variables > Actions before running it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to publish, which must match Cargo.toml
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-crates
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish de-nox to crates.io
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.0
+
+      - name: Check requested version against Cargo.toml
+        env:
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          manifest="$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "de-nox") | .version')"
+          if [ "$manifest" != "$REQUESTED" ]; then
+            echo "Cargo.toml declares ${manifest}, but the workflow was given ${REQUESTED}." >&2
+            exit 1
+          fi
+          echo "Publishing de-nox ${manifest}"
+
+      - name: Package and publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked
