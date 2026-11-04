@@ -94,11 +94,24 @@ Releases built before the current distribution pipeline was completed may not co
 For releases built by the current pipeline, the shell installer is the shortest path:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/soul-abhi/De-Nox/releases/latest/download/de-nox-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -Lf \
+  https://github.com/soul-abhi/De-Nox/releases/latest/download/de-nox-installer.sh \
+  | DE_NOX_PRINT_VERBOSE=1 sh
 ```
 
-The installer detects the platform, downloads the appropriate archive, and places the binary in `$CARGO_HOME/bin`, which is normally `~/.cargo/bin`. It also installs a small updater named `de-nox-update`. Run that command later to check for and install a newer release.
+The difference from the usual `-LsSf` invocation is deliberate. `-s` silences curl, so on a slow connection the command appears to do nothing while the installer script downloads. `-Lf` keeps the progress meter visible and still fails on an HTTP error. `DE_NOX_PRINT_VERBOSE=1` makes the installer print the source and destination of each artifact before downloading it.
+
+The installer detects the platform, downloads the appropriate archive, and places the binary in `$CARGO_HOME/bin`, which is normally `~/.cargo/bin`. The archive is roughly 600 KB.
+
+It also installs a separate updater named `de-nox-update`. That updater is about 9.4 MB, and it accounts for almost all of the installer's runtime. The generated installer does not expose a progress bar for it, so the pause can be long and uninformative. If you do not need the updater, skip it:
+
+```bash
+curl --proto '=https' --tlsv1.2 -Lf \
+  https://github.com/soul-abhi/De-Nox/releases/latest/download/de-nox-installer.sh \
+  | DE_NOX_PRINT_VERBOSE=1 DE_NOX_DISABLE_UPDATE=1 sh
+```
+
+Setting `DE_NOX_DISABLE_UPDATE=1` removes the updater download entirely; the binary install itself then completes in seconds. The environment variable is honoured by the generated installer; no separate build is required.
 
 If piping a remote script into a shell makes you uncomfortable, that is a reasonable position. Use a prebuilt archive or build from source instead.
 
