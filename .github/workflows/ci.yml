@@ -6,6 +6,11 @@ on:
     tags: [v*]          # also run on version tags
   pull_request:
 
+# This workflow only reads the repository. Publishing is handled exclusively
+# by the generated cargo-dist release workflow.
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -33,43 +38,3 @@ jobs:
 
       - name: Run tests
         run: cargo test --all-targets
-
-  build-release:
-    name: Build Release Binary
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.99.0
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: Build release
-        run: cargo build --release
-
-      - name: Strip binary (smaller)
-        run: strip target/release/de-nox
-
-      - name: Package artifact
-        run: |
-          mkdir -p dist
-          cp target/release/de-nox dist/
-          cd dist
-          tar czf de-nox-x86_64-unknown-linux-gnu.tar.gz de-nox
-          sha256sum de-nox-x86_64-unknown-linux-gnu.tar.gz > sha256sum.txt
-          cat sha256sum.txt
-
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          files: |
-            dist/de-nox-x86_64-unknown-linux-gnu.tar.gz
-            dist/sha256sum.txt
-          generate_release_notes: true

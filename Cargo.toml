@@ -1,23 +1,13 @@
 [package]
 name = "de-nox"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 description = "A terminal disk-cleanup tool that knows the difference between a dead project and a busy one."
 repository = "https://github.com/soul-abhi/De-Nox"
 readme = "README.md"
-keywords = ["cleanup", "disk", "tui", "node_modules", "target", "build-artifacts"]
+keywords = ["cleanup", "disk", "tui", "node_modules", "build-artifacts"]
 categories = ["command-line-utilities", "filesystem"]
-
-[workspace.metadata.dist]
-targets = [
-  "x86_64-unknown-linux-musl",
-  "aarch64-unknown-linux-musl",
-  "x86_64-unknown-linux-gnu",
-]
-installers = ["shell"]
-ci = "github"
-include = ["LICENSE", "README.md"]
 
 [dependencies]
 chrono = "0.4.45"
@@ -27,3 +17,8 @@ nerd_fonts = "0.1.9"
 ratatui = "0.30.2"
 serde = { version = "1.0.229", features = ["derive"] }
 walkdir = "2.5.0"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
