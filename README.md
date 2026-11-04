@@ -323,7 +323,7 @@ The current distribution configuration provides:
 | Archive contents | Binary, `LICENSE`, and `README.md` |
 | Build profile | `dist` profile inherited from `release`, with thin LTO |
 | Checksums | Per-archive SHA-256 files and a unified `sha256.sum` |
-| Additional assets | Source tarball, its checksum, and four `de-nox-<target>-update` binaries |
+| Additional assets | Source tarball, its checksum, four `de-nox-<target>-update` binaries, and `dist-manifest.json` |
 
 The pipeline is triggered by pushing a SemVer tag. The workflow pattern accepts tags such as `v0.1.1`; a tag that does not contain a valid `major.minor.patch` version will not start a release, and its silence is intentional.
 
