@@ -1,12 +1,15 @@
 name: Verify release
 
-# Runs after the cargo-dist workflow publishes a release. It answers the
-# question that an empty assets list made embarrassingly easy to miss:
-# are the files actually attached, checksummed, unpackable, and runnable?
+# A release created with the workflow GITHUB_TOKEN does not emit a
+# `release: published` event, so this workflow is chained off the Release
+# workflow instead. It answers the question an empty assets list made
+# embarrassingly easy to miss: are the files actually attached, checksummed,
+# unpackable, and runnable?
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       tag:
@@ -20,6 +23,12 @@ permissions:
 jobs:
   verify:
     name: Verify published assets
+    # The Release workflow also runs on pull requests. Only verify a successful
+    # tag push, or an explicit manual dispatch.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,5 +36,5 @@ jobs:
       - name: Verify release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          TAG: ${{ github.event.workflow_run.head_branch || inputs.tag }}
         run: scripts/verify-release.sh "$TAG"

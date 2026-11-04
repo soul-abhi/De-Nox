@@ -339,7 +339,7 @@ A release is made as follows:
    ```
 
 4. The workflow plans the release, builds each target, assembles the installer and checksums, creates the GitHub release, uploads the assets, and announces the result.
-5. The `Verify release` workflow starts when the release is published. It confirms that every expected asset exists, verifies `sha256.sum`, unpacks the archive for the runner's architecture, and runs `de-nox --version`.
+5. The `Verify release` workflow starts when the Release workflow finishes successfully. It confirms that every expected asset exists, verifies `sha256.sum`, unpacks the archive for the runner's architecture, and runs `de-nox --version`.
 
 The same check can be run locally against any published tag:
 

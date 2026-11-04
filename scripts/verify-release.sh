@@ -115,7 +115,8 @@ fi
 # --- 3. download everything covered by sha256.sum and verify it ------------
 
 echo "Downloading checksum manifest"
-curl -fsSL --retry 3 --retry-delay 2 --output "${WORKDIR}/sha256.sum" "${BASE}/sha256.sum"
+curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 300 \
+  --output "${WORKDIR}/sha256.sum" "${BASE}/sha256.sum"
 [ -s "${WORKDIR}/sha256.sum" ] || fail "sha256.sum is empty"
 
 mapfile -t checksum_files < <(
@@ -128,7 +129,8 @@ for name in "${checksum_files[@]}"; do
   case "$name" in
     */*) fail "unexpected path in sha256.sum: ${name}" ;;
   esac
-  curl -fsSL --retry 3 --retry-delay 2 --output "${WORKDIR}/${name}" "${BASE}/${name}"
+  curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 600 \
+    --output "${WORKDIR}/${name}" "${BASE}/${name}"
 done
 
 echo "Verifying SHA-256 checksums"
